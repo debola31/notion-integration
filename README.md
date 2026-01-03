@@ -5,10 +5,11 @@ A production-ready CLI tool providing full Notion API coverage, designed for Cla
 ## Features
 
 - **Full Notion API Coverage**: Pages, databases, blocks, users, search, and comments
+- **Markdown Output**: Render page content as clean markdown for AI agents
 - **Rate Limiting**: Automatic token bucket rate limiting (3 req/sec) with retry logic
 - **Caching**: Disk-based caching with TTL for faster repeated queries
 - **Retry Logic**: Exponential backoff for rate limits and server errors
-- **JSON Output**: Machine-parseable output designed for AI agents
+- **Multiple Output Formats**: JSON, pretty JSON, compact JSON, or markdown
 - **Error Handling**: Structured errors with exit codes for automation
 
 ## Installation
@@ -105,6 +106,10 @@ notion blocks get <block-id>
 # Get block children
 notion blocks children <block-id>
 notion blocks children <block-id> --recursive  # Get all nested children
+notion blocks children <block-id> --recursive --max-depth 2  # Limit nesting depth
+
+# Get page content as markdown (great for AI agents!)
+notion blocks children <page-id> --recursive --format markdown
 
 # Append children to a block
 notion blocks append <block-id> --content '[{"type": "paragraph", "paragraph": {"rich_text": [{"text": {"content": "Hello!"}}]}}]'
@@ -145,6 +150,10 @@ notion search "query" --sort descending
 
 # Get all results
 notion search "query" --all
+
+# Quiet mode - just id and title (great for scripting)
+notion search "" --filter page --all --quiet
+# Output: abc123-def456	My Page Title
 ```
 
 ### Comments
@@ -173,12 +182,20 @@ notion cache info
 
 ```
 --token, -t       Notion API token (or set NOTION_INTEGRATION_TOKEN)
---format, -f      Output format: json (default), pretty, compact
+--format, -f      Output format: json (default), pretty, compact, markdown
 --no-cache        Bypass cache for this request
 --cache-dir       Custom cache directory
 --debug           Enable debug logging
 --version         Show version
 --help            Show help
+```
+
+**Note:** The `--format` option can be used either globally (before the command) or locally (after the command):
+
+```bash
+# Both of these work:
+notion --format markdown blocks children <page-id> --recursive
+notion blocks children <page-id> --recursive --format markdown
 ```
 
 ## Output Format
@@ -197,6 +214,48 @@ All commands output JSON with a consistent structure:
   }
 }
 ```
+
+### Markdown Output
+
+When using `--format markdown`, block content is rendered as clean markdown:
+
+```bash
+notion blocks children <page-id> --recursive --format markdown
+```
+
+Output:
+```markdown
+# Heading 1
+
+This is a paragraph with **bold** and *italic* text.
+
+- Bullet item 1
+- Bullet item 2
+  - Nested item
+
+1. Numbered item
+2. Another item
+
+> This is a quote
+
+```python
+print("Code block with syntax highlighting")
+```
+```
+
+Supported block types:
+- Headings (h1, h2, h3)
+- Paragraphs with rich text (bold, italic, code, strikethrough, links)
+- Bulleted and numbered lists (with nesting)
+- To-do items (checked/unchecked)
+- Code blocks with language
+- Quotes and callouts
+- Dividers
+- Tables
+- Images, files, bookmarks, embeds
+- Toggle blocks (rendered as HTML `<details>`)
+- @mentions (users, pages, dates)
+- Equations (LaTeX: `$E=mc^2$`)
 
 ### Error Response
 

@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-OutputFormat = Literal["json", "pretty", "compact"]
+OutputFormat = Literal["json", "pretty", "compact", "markdown"]
 
 
 @dataclass

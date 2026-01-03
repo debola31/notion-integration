@@ -8,7 +8,15 @@ from typing import Any
 import click
 
 from notion_cli.api.databases import DatabasesAPI
+from notion_cli.config import OutputFormat
 from notion_cli.output.formatters import format_list, format_output
+
+# Shared format option for commands
+FORMAT_OPTION = click.option(
+    "--format", "-f", "local_format",
+    type=click.Choice(["json", "pretty", "compact", "markdown"]),
+    help="Output format (overrides global --format)",
+)
 
 
 @click.group()
@@ -19,14 +27,18 @@ def databases() -> None:
 
 @databases.command("get")
 @click.argument("database_id")
+@FORMAT_OPTION
 @click.pass_context
-def get_database(ctx: click.Context, database_id: str) -> None:
+def get_database(
+    ctx: click.Context, database_id: str, local_format: str | None
+) -> None:
     """Retrieve a database by ID."""
     settings = ctx.obj["settings"]
+    output_format: OutputFormat = local_format or settings.output_format
     api = DatabasesAPI(settings)
     try:
         result = api.retrieve(database_id)
-        click.echo(format_output(result, settings.output_format))
+        click.echo(format_output(result, output_format))
     finally:
         api.close()
 
@@ -38,6 +50,7 @@ def get_database(ctx: click.Context, database_id: str) -> None:
 @click.option("--sort", "sort_json", help="JSON sort array")
 @click.option("--page-size", type=int, help="Number of results per page (max 100)")
 @click.option("--all", "fetch_all", is_flag=True, help="Fetch all results (handle pagination)")
+@FORMAT_OPTION
 @click.pass_context
 def query_database(
     ctx: click.Context,
@@ -47,9 +60,11 @@ def query_database(
     sort_json: str | None,
     page_size: int | None,
     fetch_all: bool,
+    local_format: str | None,
 ) -> None:
     """Query a database."""
     settings = ctx.obj["settings"]
+    output_format: OutputFormat = local_format or settings.output_format
     api = DatabasesAPI(settings)
 
     try:
@@ -72,7 +87,7 @@ def query_database(
                 filter_obj=filter_obj,
                 sorts=sorts,
             )
-            click.echo(format_list(results, settings.output_format))
+            click.echo(format_list(results, output_format))
         else:
             result = api.query(
                 database_id,
@@ -80,7 +95,7 @@ def query_database(
                 sorts=sorts,
                 page_size=page_size,
             )
-            click.echo(format_output(result, settings.output_format))
+            click.echo(format_output(result, output_format))
     finally:
         api.close()
 
@@ -90,6 +105,7 @@ def query_database(
 @click.option("--title", required=True, help="Database title")
 @click.option("--properties", required=True, help="JSON properties schema")
 @click.option("--inline", is_flag=True, help="Create as inline database")
+@FORMAT_OPTION
 @click.pass_context
 def create_database(
     ctx: click.Context,
@@ -97,9 +113,11 @@ def create_database(
     title: str,
     properties: str,
     inline: bool,
+    local_format: str | None,
 ) -> None:
     """Create a new database."""
     settings = ctx.obj["settings"]
+    output_format: OutputFormat = local_format or settings.output_format
     api = DatabasesAPI(settings)
 
     try:
@@ -112,7 +130,7 @@ def create_database(
             properties=props,
             is_inline=inline,
         )
-        click.echo(format_output(result, settings.output_format))
+        click.echo(format_output(result, output_format))
     finally:
         api.close()
 
@@ -122,6 +140,7 @@ def create_database(
 @click.option("--title", help="New database title")
 @click.option("--description", help="New database description")
 @click.option("--properties", help="JSON properties schema updates")
+@FORMAT_OPTION
 @click.pass_context
 def update_database(
     ctx: click.Context,
@@ -129,9 +148,11 @@ def update_database(
     title: str | None,
     description: str | None,
     properties: str | None,
+    local_format: str | None,
 ) -> None:
     """Update a database."""
     settings = ctx.obj["settings"]
+    output_format: OutputFormat = local_format or settings.output_format
     api = DatabasesAPI(settings)
 
     try:
@@ -151,6 +172,6 @@ def update_database(
             description=desc_rich_text,
             properties=props,
         )
-        click.echo(format_output(result, settings.output_format))
+        click.echo(format_output(result, output_format))
     finally:
         api.close()

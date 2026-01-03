@@ -94,6 +94,8 @@ class BlocksAPI:
         self,
         block_id: str,
         recursive: bool = False,
+        max_depth: int | None = None,
+        _current_depth: int = 0,
     ) -> list[dict[str, Any]]:
         """
         Retrieve all block children (handles pagination).
@@ -101,10 +103,16 @@ class BlocksAPI:
         Args:
             block_id: The ID of the parent block.
             recursive: Whether to recursively fetch children of children.
+            max_depth: Maximum nesting depth to fetch (None = unlimited).
+            _current_depth: Internal parameter for tracking recursion depth.
 
         Returns:
             List of all child blocks.
         """
+        # Stop recursing if max_depth reached
+        if max_depth is not None and _current_depth > max_depth:
+            return []
+
         all_children: list[dict[str, Any]] = []
         start_cursor: str | None = None
 
@@ -120,7 +128,10 @@ class BlocksAPI:
                 for child in children:
                     if child.get("has_children", False):
                         child["children"] = self.retrieve_children_all(
-                            child["id"], recursive=True
+                            child["id"],
+                            recursive=True,
+                            max_depth=max_depth,
+                            _current_depth=_current_depth + 1,
                         )
 
             all_children.extend(children)

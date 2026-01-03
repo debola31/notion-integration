@@ -28,7 +28,7 @@ from notion_cli.output.errors import handle_error
 )
 @click.option(
     "--format", "-f", "output_format",
-    type=click.Choice(["json", "pretty", "compact"]),
+    type=click.Choice(["json", "pretty", "compact", "markdown"]),
     default="json",
     help="Output format",
 )

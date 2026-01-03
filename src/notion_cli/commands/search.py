@@ -2,12 +2,27 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 import click
 
 from notion_cli.api.search import SearchAPI
+from notion_cli.config import OutputFormat
 from notion_cli.output.formatters import format_list, format_output
+
+
+def _extract_title(item: dict[str, Any]) -> str:
+    """Extract title from a page or database object."""
+    if item.get("object") == "page":
+        props = item.get("properties", {})
+        for prop in props.values():
+            if prop.get("type") == "title":
+                title_array = prop.get("title", [])
+                return "".join(t.get("plain_text", "") for t in title_array)
+    elif item.get("object") == "database":
+        title_array = item.get("title", [])
+        return "".join(t.get("plain_text", "") for t in title_array)
+    return "Untitled"
 
 
 @click.command()
@@ -18,6 +33,10 @@ from notion_cli.output.formatters import format_list, format_output
               help="Sort direction by last edited time")
 @click.option("--page-size", type=int, help="Number of results per page")
 @click.option("--all", "fetch_all", is_flag=True, help="Fetch all results (handle pagination)")
+@click.option("--quiet", "-q", is_flag=True, help="Output only id<tab>title per line")
+@click.option("--format", "-f", "local_format",
+              type=click.Choice(["json", "pretty", "compact", "markdown"]),
+              help="Output format (overrides global --format)")
 @click.pass_context
 def search(
     ctx: click.Context,
@@ -26,9 +45,12 @@ def search(
     sort_direction: Literal["ascending", "descending"] | None,
     page_size: int | None,
     fetch_all: bool,
+    quiet: bool,
+    local_format: str | None,
 ) -> None:
     """Search for pages and databases."""
     settings = ctx.obj["settings"]
+    output_format: OutputFormat = local_format or settings.output_format
     api = SearchAPI(settings)
 
     try:
@@ -43,7 +65,13 @@ def search(
                 sort_direction=sort_direction,
                 sort_timestamp=sort_timestamp,
             )
-            click.echo(format_list(results, settings.output_format))
+            if quiet:
+                for item in results:
+                    item_id = item.get("id", "")
+                    title = _extract_title(item)
+                    click.echo(f"{item_id}\t{title}")
+            else:
+                click.echo(format_list(results, output_format))
         else:
             result = api.search(
                 query=query,
@@ -52,6 +80,13 @@ def search(
                 sort_timestamp=sort_timestamp,
                 page_size=page_size,
             )
-            click.echo(format_output(result, settings.output_format))
+            if quiet:
+                items = result.get("results", [])
+                for item in items:
+                    item_id = item.get("id", "")
+                    title = _extract_title(item)
+                    click.echo(f"{item_id}\t{title}")
+            else:
+                click.echo(format_output(result, output_format))
     finally:
         api.close()

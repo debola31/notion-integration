@@ -48,7 +48,32 @@ def search(
     quiet: bool,
     local_format: str | None,
 ) -> None:
-    """Search for pages and databases."""
+    """Search for pages and databases in the workspace.
+
+    \b
+    Examples:
+        # Search for pages containing "meeting":
+        notion search "meeting"
+
+        # Search only pages (not databases):
+        notion search "notes" --filter page
+
+        # Search only databases:
+        notion search "tasks" --filter database
+
+        # Get all results (handles pagination):
+        notion search "project" --all
+
+        # Sort by most recently edited:
+        notion search "meeting" --sort descending
+
+        # Quiet mode - just IDs and titles (great for scripting):
+        notion search "" --filter page --all --quiet
+        # Output: abc123-def456    My Page Title
+
+        # List all pages in workspace:
+        notion search "" --filter page --all
+    """
     settings = ctx.obj["settings"]
     output_format: OutputFormat = local_format or settings.output_format
     api = SearchAPI(settings)

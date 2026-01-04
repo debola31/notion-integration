@@ -118,6 +118,27 @@ class PagesAPI:
         """
         return self.update(page_id, archived=False)
 
+    def move(
+        self,
+        page_id: str,
+        parent: dict[str, Any],
+    ) -> dict[str, Any]:
+        """
+        Move a page to a new parent.
+
+        Args:
+            page_id: The ID of the page to move.
+            parent: New parent reference:
+                - {"page_id": "xxx"} for page parent
+                - {"database_id": "xxx"} for database parent
+                - {"workspace": True} for workspace (top-level)
+
+        Returns:
+            Updated page object.
+        """
+        payload = {"parent": parent}
+        return self.client.patch(f"/pages/{page_id}", json_data=payload)
+
     def retrieve_property(
         self,
         page_id: str,

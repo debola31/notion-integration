@@ -30,7 +30,13 @@ def pages() -> None:
 @FORMAT_OPTION
 @click.pass_context
 def get_page(ctx: click.Context, page_id: str, local_format: str | None) -> None:
-    """Retrieve a page by ID."""
+    """Retrieve a page by ID.
+
+    \b
+    Examples:
+        notion pages get abc123-def456
+        notion pages get abc123 --format pretty
+    """
     settings = ctx.obj["settings"]
     output_format: OutputFormat = local_format or settings.output_format
     api = PagesAPI(settings)
@@ -63,7 +69,25 @@ def create_page(
     cover: str | None,
     local_format: str | None,
 ) -> None:
-    """Create a new page."""
+    """Create a new page.
+
+    \b
+    Examples:
+        # Create page under another page:
+        notion pages create --parent-id abc123 --title "My Page"
+
+        # Create page in a database with properties:
+        notion pages create --parent-id db123 --parent-type database \\
+            --title "Task" --properties '{"Status": {"select": {"name": "Todo"}}}'
+
+        # Create page with content blocks:
+        notion pages create --parent-id abc123 --title "Notes" \\
+            --content '[{"type": "paragraph", "paragraph": {"rich_text": [{"text": {"content": "Hello"}}]}}]'
+
+        # Create page with emoji icon:
+        notion pages create --parent-id abc123 --title "Doc" \\
+            --icon '{"type": "emoji", "emoji": "📄"}'
+    """
     settings = ctx.obj["settings"]
     output_format: OutputFormat = local_format or settings.output_format
     api = PagesAPI(settings)
@@ -119,7 +143,22 @@ def update_page(
     cover: str | None,
     local_format: str | None,
 ) -> None:
-    """Update a page."""
+    """Update a page's properties, icon, or cover.
+
+    \b
+    Examples:
+        # Update a select property:
+        notion pages update abc123 --properties '{"Status": {"select": {"name": "Done"}}}'
+
+        # Update a checkbox property:
+        notion pages update abc123 --properties '{"Completed": {"checkbox": true}}'
+
+        # Update multiple properties:
+        notion pages update abc123 --properties '{"Status": {"select": {"name": "Done"}}, "Priority": {"select": {"name": "High"}}}'
+
+        # Set emoji icon:
+        notion pages update abc123 --icon '{"type": "emoji", "emoji": "✅"}'
+    """
     settings = ctx.obj["settings"]
     output_format: OutputFormat = local_format or settings.output_format
     api = PagesAPI(settings)
@@ -171,6 +210,66 @@ def restore_page(
     api = PagesAPI(settings)
     try:
         result = api.restore(page_id)
+        click.echo(format_output(result, output_format))
+    finally:
+        api.close()
+
+
+@pages.command("move")
+@click.argument("page_id")
+@click.option("--to-page", help="Move under a page (provide page ID)")
+@click.option("--to-database", help="Move into a database (provide database ID)")
+@click.option("--to-workspace", is_flag=True, help="Move to workspace top-level")
+@FORMAT_OPTION
+@click.pass_context
+def move_page(
+    ctx: click.Context,
+    page_id: str,
+    to_page: str | None,
+    to_database: str | None,
+    to_workspace: bool,
+    local_format: str | None,
+) -> None:
+    """Move a page to a new parent location.
+
+    \b
+    Examples:
+        # Move page under another page:
+        notion pages move abc123 --to-page def456
+
+        # Move page into a database:
+        notion pages move abc123 --to-database db789
+
+        # Move page to workspace root (top-level):
+        notion pages move abc123 --to-workspace
+    """
+    settings = ctx.obj["settings"]
+    output_format: OutputFormat = local_format or settings.output_format
+
+    # Validate exactly one destination is specified
+    destinations = [to_page, to_database, to_workspace]
+    specified = sum(1 for d in destinations if d)
+    if specified == 0:
+        raise click.UsageError(
+            "Must specify one of: --to-page, --to-database, or --to-workspace"
+        )
+    if specified > 1:
+        raise click.UsageError(
+            "Cannot specify multiple destinations. Use only one of: "
+            "--to-page, --to-database, or --to-workspace"
+        )
+
+    # Build parent dict based on option
+    if to_page:
+        parent: dict[str, Any] = {"page_id": to_page}
+    elif to_database:
+        parent = {"database_id": to_database}
+    else:  # to_workspace
+        parent = {"workspace": True}
+
+    api = PagesAPI(settings)
+    try:
+        result = api.move(page_id, parent)
         click.echo(format_output(result, output_format))
     finally:
         api.close()

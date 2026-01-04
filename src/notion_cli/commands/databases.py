@@ -62,7 +62,31 @@ def query_database(
     fetch_all: bool,
     local_format: str | None,
 ) -> None:
-    """Query a database."""
+    """Query a database with optional filters and sorting.
+
+    \b
+    Examples:
+        # Get all items from database:
+        notion databases query abc123 --all
+
+        # Filter by select property:
+        notion databases query abc123 --filter '{"property": "Status", "select": {"equals": "Done"}}'
+
+        # Filter by checkbox:
+        notion databases query abc123 --filter '{"property": "Completed", "checkbox": {"equals": true}}'
+
+        # Filter by text contains:
+        notion databases query abc123 --filter '{"property": "Name", "rich_text": {"contains": "meeting"}}'
+
+        # Compound filter (AND):
+        notion databases query abc123 --filter '{"and": [{"property": "Status", "select": {"equals": "Done"}}, {"property": "Priority", "select": {"equals": "High"}}]}'
+
+        # Sort by property:
+        notion databases query abc123 --sort '[{"property": "Created", "direction": "descending"}]'
+
+        # Filter and sort combined:
+        notion databases query abc123 --filter '{"property": "Status", "select": {"equals": "Todo"}}' --sort '[{"property": "Priority", "direction": "ascending"}]' --all
+    """
     settings = ctx.obj["settings"]
     output_format: OutputFormat = local_format or settings.output_format
     api = DatabasesAPI(settings)
@@ -115,7 +139,22 @@ def create_database(
     inline: bool,
     local_format: str | None,
 ) -> None:
-    """Create a new database."""
+    """Create a new database.
+
+    \b
+    Examples:
+        # Create a simple task database:
+        notion databases create --parent-id abc123 --title "Tasks" \\
+            --properties '{"Name": {"title": {}}, "Status": {"select": {"options": [{"name": "Todo"}, {"name": "Done"}]}}}'
+
+        # Create database with multiple property types:
+        notion databases create --parent-id abc123 --title "Projects" \\
+            --properties '{"Name": {"title": {}}, "Status": {"select": {}}, "Due Date": {"date": {}}, "Completed": {"checkbox": {}}}'
+
+        # Create inline database:
+        notion databases create --parent-id abc123 --title "Notes" \\
+            --properties '{"Name": {"title": {}}}' --inline
+    """
     settings = ctx.obj["settings"]
     output_format: OutputFormat = local_format or settings.output_format
     api = DatabasesAPI(settings)

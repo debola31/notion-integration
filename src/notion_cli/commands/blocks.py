@@ -55,7 +55,22 @@ def get_children(
     max_depth: int | None,
     local_format: str | None,
 ) -> None:
-    """Get block children."""
+    """Get block children (content of a page or block).
+
+    \b
+    Examples:
+        # Get page content as JSON:
+        notion blocks children abc123
+
+        # Get all nested content recursively:
+        notion blocks children abc123 --recursive
+
+        # Get content as markdown (great for reading):
+        notion blocks children abc123 --recursive --format markdown
+
+        # Limit recursion depth:
+        notion blocks children abc123 --recursive --max-depth 2
+    """
     settings = ctx.obj["settings"]
     output_format: OutputFormat = local_format or settings.output_format
     api = BlocksAPI(settings)
@@ -86,7 +101,28 @@ def append_children(
     after: str | None,
     local_format: str | None,
 ) -> None:
-    """Append children to a block."""
+    """Append children blocks to a page or block.
+
+    \b
+    Examples:
+        # Add a paragraph:
+        notion blocks append abc123 --content '[{"type": "paragraph", "paragraph": {"rich_text": [{"type": "text", "text": {"content": "Hello world"}}]}}]'
+
+        # Add a heading:
+        notion blocks append abc123 --content '[{"type": "heading_2", "heading_2": {"rich_text": [{"type": "text", "text": {"content": "My Heading"}}]}}]'
+
+        # Add a bulleted list:
+        notion blocks append abc123 --content '[{"type": "bulleted_list_item", "bulleted_list_item": {"rich_text": [{"type": "text", "text": {"content": "Item 1"}}]}}, {"type": "bulleted_list_item", "bulleted_list_item": {"rich_text": [{"type": "text", "text": {"content": "Item 2"}}]}}]'
+
+        # Add a to-do item:
+        notion blocks append abc123 --content '[{"type": "to_do", "to_do": {"rich_text": [{"type": "text", "text": {"content": "Task to complete"}}], "checked": false}}]'
+
+        # Add a code block:
+        notion blocks append abc123 --content '[{"type": "code", "code": {"rich_text": [{"type": "text", "text": {"content": "print(\"hello\")"}}], "language": "python"}}]'
+
+        # Add a divider:
+        notion blocks append abc123 --content '[{"type": "divider", "divider": {}}]'
+    """
     settings = ctx.obj["settings"]
     output_format: OutputFormat = local_format or settings.output_format
     api = BlocksAPI(settings)

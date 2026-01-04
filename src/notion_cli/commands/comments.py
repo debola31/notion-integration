@@ -35,7 +35,16 @@ def list_comments(
     page_size: int | None,
     local_format: str | None,
 ) -> None:
-    """List comments for a block or page."""
+    """List comments for a block or page.
+
+    \b
+    Examples:
+        # List comments on a page:
+        notion comments list --block-id abc123
+
+        # Get all comments (handles pagination):
+        notion comments list --block-id abc123 --all
+    """
     settings = ctx.obj["settings"]
     output_format: OutputFormat = local_format or settings.output_format
     api = CommentsAPI(settings)
@@ -64,7 +73,16 @@ def create_comment(
     discussion_id: str | None,
     local_format: str | None,
 ) -> None:
-    """Create a new comment."""
+    """Create a new comment on a page.
+
+    \b
+    Examples:
+        # Add a comment to a page:
+        notion comments create --page-id abc123 --text "This looks good!"
+
+        # Reply to an existing discussion thread:
+        notion comments create --page-id abc123 --text "I agree" --discussion-id disc789
+    """
     settings = ctx.obj["settings"]
     output_format: OutputFormat = local_format or settings.output_format
     api = CommentsAPI(settings)

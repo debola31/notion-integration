@@ -126,18 +126,20 @@ class PagesAPI:
         """
         Move a page to a new parent.
 
+        Uses the dedicated move endpoint: POST /pages/{page_id}/move
+
         Args:
             page_id: The ID of the page to move.
-            parent: New parent reference:
-                - {"page_id": "xxx"} for page parent
-                - {"database_id": "xxx"} for database parent
-                - {"workspace": True} for workspace (top-level)
+            parent: New parent reference with type field:
+                - {"type": "page_id", "page_id": "xxx"} for page parent
+                - {"type": "database_id", "database_id": "xxx"} for database parent
+                - {"type": "workspace", "workspace": true} for workspace (top-level)
 
         Returns:
             Updated page object.
         """
         payload = {"parent": parent}
-        return self.client.patch(f"/pages/{page_id}", json_data=payload)
+        return self.client.post(f"/pages/{page_id}/move", json_data=payload)
 
     def retrieve_property(
         self,

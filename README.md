@@ -74,10 +74,10 @@ notion pages update <page-id> --properties '{"Status": {"select": {"name": "Done
 notion pages archive <page-id>
 notion pages restore <page-id>
 
-# Move a page to a new parent
+# Move a page to a new parent (uses Move Page API)
 notion pages move <page-id> --to-page <new-parent-page-id>
 notion pages move <page-id> --to-database <database-id>
-notion pages move <page-id> --to-workspace  # Move to top-level
+notion pages move <page-id> --to-workspace  # Move to workspace root
 
 # Get a page property
 notion pages property <page-id> <property-id>

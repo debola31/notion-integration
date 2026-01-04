@@ -232,6 +232,9 @@ def move_page(
 ) -> None:
     """Move a page to a new parent location.
 
+    Uses the Notion Move Page API (POST /pages/{id}/move) to relocate
+    a page within your workspace.
+
     \b
     Examples:
         # Move page under another page:
@@ -242,6 +245,9 @@ def move_page(
 
         # Move page to workspace root (top-level):
         notion pages move abc123 --to-workspace
+
+    \b
+    Note: Exactly one destination must be specified.
     """
     settings = ctx.obj["settings"]
     output_format: OutputFormat = local_format or settings.output_format
@@ -259,13 +265,13 @@ def move_page(
             "--to-page, --to-database, or --to-workspace"
         )
 
-    # Build parent dict based on option
+    # Build parent dict based on option (with type field as required by API)
     if to_page:
-        parent: dict[str, Any] = {"page_id": to_page}
+        parent: dict[str, Any] = {"type": "page_id", "page_id": to_page}
     elif to_database:
-        parent = {"database_id": to_database}
+        parent = {"type": "database_id", "database_id": to_database}
     else:  # to_workspace
-        parent = {"workspace": True}
+        parent = {"type": "workspace", "workspace": True}
 
     api = PagesAPI(settings)
     try:

@@ -48,20 +48,22 @@ def get_page(ctx: click.Context, page_id: str, local_format: str | None) -> None
 
 
 @pages.command("create")
-@click.option("--parent-id", required=True, help="Parent page or database ID")
+@click.option("--parent-id", help="Parent page or database ID")
 @click.option("--parent-type", type=click.Choice(["page", "database"]), default="page",
-              help="Type of parent")
+              help="Type of parent (page or database)")
+@click.option("--workspace", is_flag=True, help="Create as top-level page in workspace")
 @click.option("--title", required=True, help="Page title")
 @click.option("--properties", help="JSON properties object")
-@click.option("--content", help="JSON array of block children")
+@click.option("--content", help="JSON array of block children or plain text")
 @click.option("--icon", help="JSON icon object (emoji or external)")
 @click.option("--cover", help="JSON cover object (external URL)")
 @FORMAT_OPTION
 @click.pass_context
 def create_page(
     ctx: click.Context,
-    parent_id: str,
+    parent_id: str | None,
     parent_type: str,
+    workspace: bool,
     title: str,
     properties: str | None,
     content: str | None,
@@ -73,6 +75,9 @@ def create_page(
 
     \b
     Examples:
+        # Create top-level page in workspace:
+        notion pages create --workspace --title "My Page"
+
         # Create page under another page:
         notion pages create --parent-id abc123 --title "My Page"
 
@@ -80,21 +85,40 @@ def create_page(
         notion pages create --parent-id db123 --parent-type database \\
             --title "Task" --properties '{"Status": {"select": {"name": "Todo"}}}'
 
-        # Create page with content blocks:
+        # Create page with plain text content:
+        notion pages create --workspace --title "Notes" --content "Hello world"
+
+        # Create page with block content (JSON):
         notion pages create --parent-id abc123 --title "Notes" \\
             --content '[{"type": "paragraph", "paragraph": {"rich_text": [{"text": {"content": "Hello"}}]}}]'
 
         # Create page with emoji icon:
         notion pages create --parent-id abc123 --title "Doc" \\
             --icon '{"type": "emoji", "emoji": "📄"}'
+
+    \b
+    Note: Either --parent-id or --workspace must be specified.
     """
     settings = ctx.obj["settings"]
     output_format: OutputFormat = local_format or settings.output_format
+
+    # Validate parent options
+    if not parent_id and not workspace:
+        raise click.UsageError(
+            "Must specify either --parent-id or --workspace"
+        )
+    if parent_id and workspace:
+        raise click.UsageError(
+            "Cannot specify both --parent-id and --workspace"
+        )
+
     api = PagesAPI(settings)
 
     try:
         # Build parent reference
-        if parent_type == "page":
+        if workspace:
+            parent: dict[str, Any] = {"type": "workspace", "workspace": True}
+        elif parent_type == "page":
             parent = {"page_id": parent_id}
         else:
             parent = {"database_id": parent_id}
@@ -105,14 +129,26 @@ def create_page(
             props = json.loads(properties)
 
         # Add title property
-        if parent_type == "page":
+        if parent_type == "page" or workspace:
             props["title"] = {"title": [{"text": {"content": title}}]}
         else:
             # For database pages, use the Name property (common default)
             props["Name"] = {"title": [{"text": {"content": title}}]}
 
-        # Parse optional JSON fields
-        children = json.loads(content) if content else None
+        # Parse content - can be JSON blocks or plain text
+        children = None
+        if content:
+            try:
+                children = json.loads(content)
+            except json.JSONDecodeError:
+                # Treat as plain text - convert to paragraph block
+                children = [{
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [{"type": "text", "text": {"content": content}}]
+                    }
+                }]
+
         icon_obj = json.loads(icon) if icon else None
         cover_obj = json.loads(cover) if cover else None
 
@@ -295,6 +331,58 @@ def get_property(
     api = PagesAPI(settings)
     try:
         result = api.retrieve_property(page_id, property_id)
+        click.echo(format_output(result, output_format))
+    finally:
+        api.close()
+
+
+@pages.command("replace")
+@click.argument("page_id")
+@click.option("--find", "find_text", required=True, help="Text to find in page content")
+@click.option("--replace", "replace_text", help="Text to replace with (omit for dry-run preview)")
+@click.option("--ignore-case", "-i", is_flag=True, help="Case-insensitive matching")
+@FORMAT_OPTION
+@click.pass_context
+def replace_text_cmd(
+    ctx: click.Context,
+    page_id: str,
+    find_text: str,
+    replace_text: str | None,
+    ignore_case: bool,
+    local_format: str | None,
+) -> None:
+    """Find and replace text in a page's content blocks.
+
+    Searches through all text content in a page (paragraphs, headings,
+    lists, quotes, code blocks, etc.) and optionally replaces matches.
+
+    \b
+    Examples:
+        # Preview matches (dry-run, no changes made):
+        notion pages replace abc123 --find "typo"
+
+        # Find and replace all occurrences:
+        notion pages replace abc123 --find "old text" --replace "new text"
+
+        # Case-insensitive find/replace:
+        notion pages replace abc123 --find "TODO" --replace "DONE" -i
+
+    \b
+    Output shows:
+        - total_matches: Number of text matches found
+        - blocks_modified: Number of blocks updated (0 if dry-run)
+        - matches: List with block_id, block_type, context, replaced status
+    """
+    settings = ctx.obj["settings"]
+    output_format: OutputFormat = local_format or settings.output_format
+    api = PagesAPI(settings)
+    try:
+        result = api.find_replace(
+            page_id,
+            find_text,
+            replace_text=replace_text,
+            ignore_case=ignore_case,
+        )
         click.echo(format_output(result, output_format))
     finally:
         api.close()

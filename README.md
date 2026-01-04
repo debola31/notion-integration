@@ -63,7 +63,11 @@ notion --token secret_xxxxx pages get <page-id>
 # Get a page
 notion pages get <page-id>
 
-# Create a page
+# Create a top-level page in workspace
+notion pages create --workspace --title "My Page"
+notion pages create --workspace --title "Notes" --content "Hello world"
+
+# Create page under another page
 notion pages create --parent-id <parent-page-id> --title "My Page"
 notion pages create --parent-id <database-id> --parent-type database --title "Database Item"
 
@@ -78,6 +82,15 @@ notion pages restore <page-id>
 notion pages move <page-id> --to-page <new-parent-page-id>
 notion pages move <page-id> --to-database <database-id>
 notion pages move <page-id> --to-workspace  # Move to workspace root
+
+# Find text in a page (dry-run preview)
+notion pages replace <page-id> --find "search term"
+
+# Find and replace text
+notion pages replace <page-id> --find "old text" --replace "new text"
+
+# Case-insensitive find/replace
+notion pages replace <page-id> --find "TODO" --replace "DONE" -i
 
 # Get a page property
 notion pages property <page-id> <property-id>
